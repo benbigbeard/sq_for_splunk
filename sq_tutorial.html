@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>sq tutorial for Splunk</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#0f1731;
+      --text:#e8ecff;
+      --muted:#a9b2d6;
+      --accent:#7aa2ff;
+      --code:#0a0f22;
+      --border:rgba(255,255,255,.10);
+      --good:#59d98e;
+      --warn:#ffcc66;
+    }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% 0%, rgba(122,162,255,.18), transparent 55%),
+                  radial-gradient(900px 500px at 85% 10%, rgba(89,217,142,.14), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      line-height:1.5;
+    }
+    header{
+      padding:36px 20px 18px;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    h1{ margin:0 0 10px; font-size:34px; letter-spacing:.2px; }
+    header p{ margin:0; color:var(--muted); max-width:80ch; }
+    main{
+      max-width:1100px;
+      margin:0 auto;
+      padding:0 20px 48px;
+      display:grid;
+      grid-template-columns: 280px 1fr;
+      gap:18px;
+    }
+    nav{
+      position:sticky;
+      top:12px;
+      align-self:start;
+      background:rgba(15,23,49,.72);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px 12px;
+      backdrop-filter: blur(8px);
+    }
+    nav a{
+      display:block;
+      padding:8px 10px;
+      border-radius:10px;
+      color:var(--muted);
+      text-decoration:none;
+      font-size:14px;
+    }
+    nav a:hover{ color:var(--text); background:rgba(255,255,255,.06); }
+    section{
+      background:rgba(15,23,49,.72);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:18px 18px 14px;
+      margin-bottom:18px;
+      backdrop-filter: blur(8px);
+    }
+    h2{ margin:0 0 8px; font-size:20px; }
+    h3{ margin:18px 0 8px; font-size:16px; color:var(--text); }
+    p{ margin:8px 0; color:var(--muted); }
+    ul{ margin:10px 0 0 18px; color:var(--muted); }
+    li{ margin:6px 0; }
+    code.inline{
+      background:rgba(255,255,255,.06);
+      border:1px solid var(--border);
+      padding:1px 6px;
+      border-radius:7px;
+      color:var(--text);
+      font-size: 0.95em;
+    }
+    .callout{
+      border-left: 4px solid var(--accent);
+      padding:10px 12px;
+      margin:12px 0;
+      background: rgba(122,162,255,.10);
+      border-radius:10px;
+      color:var(--muted);
+    }
+    .callout strong{ color:var(--text); }
+    .note{
+      border-left: 4px solid var(--good);
+      background: rgba(89,217,142,.10);
+    }
+    .warn{
+      border-left: 4px solid var(--warn);
+      background: rgba(255,204,102,.10);
+    }
+    pre{
+      margin:10px 0 0;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius:12px;
+      padding:12px 12px;
+      overflow:auto;
+      position:relative;
+    }
+    pre code{
+      color:#e8ecff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:13px;
+      white-space:pre;
+    }
+    .btn{
+      position:absolute;
+      top:10px;
+      right:10px;
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      cursor:pointer;
+    }
+    .btn:hover{ background:rgba(255,255,255,.10); }
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+      margin-top:8px;
+    }
+    .tag{
+      display:inline-block;
+      font-size:12px;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      color:var(--muted);
+      background:rgba(255,255,255,.04);
+      margin-left:8px;
+      vertical-align:middle;
+    }
+    @media (max-width: 980px){
+      main{ grid-template-columns: 1fr; }
+      nav{ position:relative; top:auto; }
+      .grid2{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>sq tutorial for Splunk</h1>
+    <p>
+      <span class="tag">inspired by jq</span>
+      <br/>
+      <strong>sq</strong> is a lightweight JSON filter language implemented as a Splunk streaming command.
+      This page is a hands-on guide with copy/paste SPL examples you can run immediately.
+    </p>
+  </header>
+
+  <main>
+    <nav>
+      <a href="#start">Start here</a>
+      <a href="#data">Test data (single objects and multi objects)</a>
+      <a href="#syntax">Core syntax</a>
+      <a href="#functions">Functions</a>
+      <a href="#output">Output modes and formatting</a>
+      <a href="#examples">Worked examples</a>
+      <a href="#tips">Tips and gotchas</a>
+    </nav>
+
+    <div>
+
+      <section id="start">
+        <h2>Start here</h2>
+        <p>
+          Run <code class="inline">sq</code> after any search that returns events containing JSON in <code class="inline">_raw</code>
+          (or another field using <code class="inline">field=</code>).
+        </p>
+
+        <div class="callout warn">
+          <strong>Important:</strong> In this tutorial we always use <code class="inline">filter="..."</code>.
+          It is the most reliable way to pass expressions that contain spaces, parentheses, or pipes.
+        </div>
+
+        <h3>Quick sanity check</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>index=your_index sourcetype=your_sourcetype
+| head 5
+| sq filter=".sha" mode=out out=sha raw=true
+| table sha</code></pre>
+      </section>
+
+      <section id="data">
+        <h2>Test data (single objects and multi objects)</h2>
+        <p>
+          These examples build JSON inline using <code class="inline">makeresults</code> so you can test without any external data.
+        </p>
+
+        <h3>A. multiple events, each event is one JSON object</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults count=3
+| streamstats count as n
+| eval _raw=case(
+    n=1, "{\"id\":1,\"name\":\"Ada\",\"tags\":[\"red\",\"green\",\"blue\"],\"score\":7,\"active\":true}",
+    n=2, "{\"id\":2,\"name\":\"Ben\",\"tags\":[\"blue\"],\"score\":null,\"active\":false}",
+    1=1, "{\"id\":3,\"name\":\"Cy\",\"tags\":[],\"score\":12,\"active\":true}"
+  )
+| table _raw</code></pre>
+
+        <h3>B. a single event, where _raw is a JSON array of objects</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="[
+  {\"id\":1,\"name\":\"Ada\",\"tags\":[\"red\",\"green\",\"blue\"],\"score\":7},
+  {\"id\":2,\"name\":\"Ben\",\"tags\":[\"blue\"],\"score\":null},
+  {\"id\":3,\"name\":\"Cy\",\"tags\":[],\"score\":12}
+]"
+| table _raw</code></pre>
+
+        <div class="callout note">
+          <strong>Why two datasets?</strong>
+          Most Splunk data arrives as one JSON object per event (A).
+          Sometimes you will ingest one event containing an array of objects (B). Both are valid, and sq works with both.
+        </div>
+      </section>
+
+      <section id="syntax">
+        <h2>Core syntax</h2>
+
+        <h3>Field access</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"user\":{\"name\":\"Ada\",\"role\":\"admin\"}}"
+| sq filter=".user.name" mode=out out=name raw=true
+| table name</code></pre>
+
+        <h3>Array index and iteration</h3>
+        <div class="grid2">
+          <div>
+            <p><strong>Index</strong> (<code class="inline">.[0]</code>)</p>
+            <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="[10,20,30]"
+| sq filter=".[0]" mode=out out=first raw=true
+| table first</code></pre>
+          </div>
+          <div>
+            <p><strong>Iterate</strong> (<code class="inline">.[]</code>)</p>
+            <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="[10,20,30]"
+| sq filter=".[]" mode=emit out=value raw=true
+| table value</code></pre>
+          </div>
+        </div>
+
+        <h3>Pipes</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"tags\":[\"red\",\"green\",\"blue\"]}"
+| sq filter=".tags[] | ." mode=emit out=tag raw=true
+| table tag</code></pre>
+      </section>
+
+      <section id="functions">
+        <h2>Functions</h2>
+
+        <h3>1. select(PRED)</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults count=3
+| streamstats count as n
+| eval _raw=case(
+    n=1, "{\"id\":1,\"name\":\"Ada\",\"score\":7}",
+    n=2, "{\"id\":2,\"name\":\"Ben\",\"score\":null}",
+    1=1, "{\"id\":3,\"name\":\"Cy\",\"score\":12}"
+  )
+| sq filter="select(.score != null) | .name" mode=emit out=name raw=true
+| table name</code></pre>
+
+        <h3>2. map(EXPR)</h3>
+        <p>Map expects an array input and returns a new array.</p>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"names\":[{\"name\":\"Ada\"},{\"name\":\"Ben\"},{\"name\":\"Cy\"}]}"
+| sq filter=".names | map(.name)" mode=out out=names mv=true raw=true
+| table names</code></pre>
+
+        <h3>3. length</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"tags\":[\"red\",\"green\",\"blue\"]}"
+| sq filter=".tags | length" mode=out out=tag_count raw=true
+| table tag_count</code></pre>
+
+        <h3>4. keys and has()</h3>
+        <div class="grid2">
+          <div>
+            <p><strong>keys</strong></p>
+            <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"id\":1,\"name\":\"Ada\",\"active\":true}"
+| sq filter="keys" mode=out out=keys mv=true raw=true
+| table keys</code></pre>
+          </div>
+          <div>
+            <p><strong>has("key")</strong></p>
+            <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"id\":1,\"name\":\"Ada\"}"
+| sq filter="has(\"name\")" mode=out out=has_name raw=true
+| table has_name</code></pre>
+          </div>
+        </div>
+
+        <h3>5. Fallback operator //</h3>
+        <p>If the left side is <code class="inline">null</code> or <code class="inline">false</code>, sq returns the right side.</p>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults count=2
+| streamstats count as n
+| eval _raw=case(
+    n=1, "{\"name\":\"Ada\",\"nick\":null}",
+    1=1, "{\"name\":\"Ben\"}"
+  )
+| sq filter=".nick // .name" mode=out out=label raw=true
+| table label</code></pre>
+      </section>
+
+      <section id="output">
+        <h2>Output modes and formatting</h2>
+
+        <h3>mode</h3>
+        <ul>
+          <li><code class="inline">mode=out</code> (default): one output event per input event. Writes into <code class="inline">out=</code>.</li>
+          <li><code class="inline">mode=emit</code>: emits one output event per produced value (can increase event count).</li>
+          <li><code class="inline">mode=merge</code>: if the final value is an object, merges its keys into the event.</li>
+        </ul>
+
+        <h3>raw</h3>
+        <ul>
+          <li><code class="inline">raw=true</code>: for scalars, writes plain values (no JSON quotes).</li>
+          <li><code class="inline">raw=false</code>: non-scalars are JSON encoded, scalars may appear with JSON encoding.</li>
+        </ul>
+
+        <h3>pretty</h3>
+        <p>
+          If <code class="inline">pretty=true</code>, objects and arrays are JSON pretty-printed (human readable).
+          If false, JSON is compact (better for storage and further machine processing).
+        </p>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"a\":1,\"b\":{\"c\":2,\"d\":[3,4]}}"
+| sq filter="." mode=out out=obj pretty=true
+| table obj</code></pre>
+
+        <h3>mv</h3>
+        <p>
+          If a filter produces multiple values in <code class="inline">mode=out</code>, you can choose how they are stored:
+        </p>
+        <ul>
+          <li><code class="inline">mv=false</code> (default): store multiple values as a single JSON array value.</li>
+          <li><code class="inline">mv=true</code>: store multiple values as a Splunk multivalue field (best for later SPL like <code class="inline">mvexpand</code>).</li>
+        </ul>
+
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"tags\":[\"red\",\"green\",\"blue\"]}"
+| sq filter=".tags[]" mode=out out=tags mv=true raw=true
+| table tags
+| mvexpand tags</code></pre>
+
+        <div class="callout warn">
+          <strong>Reminder:</strong> if you want each produced value as its own event, use <code class="inline">mode=emit</code>.
+          If you want one event with a multivalue field, use <code class="inline">mode=out mv=true</code>.
+        </div>
+      </section>
+
+      <section id="examples">
+        <h2>Worked examples</h2>
+
+        <h3>Example: filter then return a field</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults count=3
+| streamstats count as n
+| eval _raw=case(
+    n=1, "{\"id\":1,\"name\":\"Ada\",\"active\":true}",
+    n=2, "{\"id\":2,\"name\":\"Ben\",\"active\":false}",
+    1=1, "{\"id\":3,\"name\":\"Cy\",\"active\":true}"
+  )
+| sq filter="select(.active == true) | .name" mode=emit out=name raw=true
+| table name</code></pre>
+
+        <h3>Example: nested extraction</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="{\"commit\":{\"committer\":{\"name\":\"web-flow\"},\"message\":\"hello\"}}"
+| sq filter="{name: .commit.committer.name, message: .commit.message}" mode=out out=commit pretty=true
+| table commit</code></pre>
+
+        <h3>Example: single event with an array of objects</h3>
+        <pre><button class="btn" data-copy>Copy</button><code>| makeresults
+| eval _raw="[
+  {\"id\":1,\"name\":\"Ada\",\"score\":7},
+  {\"id\":2,\"name\":\"Ben\",\"score\":null},
+  {\"id\":3,\"name\":\"Cy\",\"score\":12}
+]"
+| sq filter=".[] | select(.score != null) | .name" mode=emit out=name raw=true
+| table name</code></pre>
+      </section>
+
+      <section id="tips">
+        <h2>Tips and gotchas</h2>
+
+        <div class="callout warn">
+          <strong>Always use filter= in docs:</strong>
+          <code class="inline">sq filter="select(.score != null) | .name"</code>
+          is more reliable than <code class="inline">sq "select(...)"</code> in SPL.
+        </div>
+
+        <p>
+          If your JSON is not in <code class="inline">_raw</code>, copy it into a field first, then set <code class="inline">field=</code>.
+        </p>
+
+        <pre><button class="btn" data-copy>Copy</button><code>... your search ...
+| eval json=_raw
+| sq field=json filter=".id" mode=out out=id raw=true
+| table id</code></pre>
+
+        <p>
+          When experimenting, start with <code class="inline">raw=true</code> for simple scalar extractions, and add <code class="inline">pretty=true</code> only for readability.
+        </p>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    // Copy buttons for <pre> blocks
+    document.querySelectorAll("[data-copy]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const pre = btn.closest("pre");
+        const code = pre ? pre.querySelector("code") : null;
+        if (!code) return;
+        navigator.clipboard.writeText(code.textContent).then(() => {
+          const old = btn.textContent;
+          btn.textContent = "Copied";
+          setTimeout(() => btn.textContent = old, 900);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
